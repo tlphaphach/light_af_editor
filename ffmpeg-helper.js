@@ -163,15 +163,34 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       const rawLabel = `[v_raw_${vStep}]`;
       const nextLabel = `[v_out_${vStep}]`;
 
+      const opacity = Math.max(0, Math.min(1, (c.opacity !== undefined ? c.opacity : 100) / 100));
+      const fadeIn = Math.min(dur, Math.max(0, c.fadeIn || 0));
+      const fadeOut = Math.min(dur, Math.max(0, c.fadeOut || 0));
+
+      const vFilters = [];
       if (item.mediaType === 'image') {
-        filterParts.push(
-          `[${idx}:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,format=rgba,setpts=PTS-STARTPTS+${start.toFixed(3)}/TB${rawLabel}`
-        );
+        vFilters.push(`scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease`, 'format=rgba');
       } else {
-        filterParts.push(
-          `[${idx}:v]trim=start=${inPt.toFixed(3)}:duration=${dur.toFixed(3)},setpts=PTS-STARTPTS+${start.toFixed(3)}/TB,scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,format=rgba${rawLabel}`
+        vFilters.push(
+          `trim=start=${inPt.toFixed(3)}:duration=${dur.toFixed(3)}`,
+          'setpts=PTS-STARTPTS',
+          `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease`,
+          'format=rgba'
         );
       }
+
+      if (opacity < 1) {
+        vFilters.push(`colorchannelmixer=aa=${opacity.toFixed(3)}`);
+      }
+      if (fadeIn > 0) {
+        vFilters.push(`fade=t=in:st=0:d=${fadeIn.toFixed(3)}:alpha=1`);
+      }
+      if (fadeOut > 0) {
+        vFilters.push(`fade=t=out:st=${Math.max(0, dur - fadeOut).toFixed(3)}:d=${fadeOut.toFixed(3)}:alpha=1`);
+      }
+      vFilters.push(`setpts=PTS-STARTPTS+${start.toFixed(3)}/TB`);
+
+      filterParts.push(`[${idx}:v]${vFilters.join(',')}${rawLabel}`);
 
       const overlayX = `(W-w)/2+(W*${(posX / 100).toFixed(3)})`;
       const overlayY = `(H-h)/2+(H*${(posY / 100).toFixed(3)})`;
@@ -199,11 +218,24 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       const inPt = Math.max(0, c.inPoint || 0);
       const vol = c.volume !== undefined ? c.volume / 100 : 1;
       const delayMs = Math.round(start * 1000);
+      const fadeIn = Math.min(dur, Math.max(0, c.fadeIn || 0));
+      const fadeOut = Math.min(dur, Math.max(0, c.fadeOut || 0));
+
+      const aFilters = [
+        `atrim=start=${inPt.toFixed(3)}:duration=${dur.toFixed(3)}`,
+        'asetpts=PTS-STARTPTS',
+        `volume=${vol.toFixed(3)}`,
+      ];
+      if (fadeIn > 0) {
+        aFilters.push(`afade=t=in:st=0:d=${fadeIn.toFixed(3)}`);
+      }
+      if (fadeOut > 0) {
+        aFilters.push(`afade=t=out:st=${Math.max(0, dur - fadeOut).toFixed(3)}:d=${fadeOut.toFixed(3)}`);
+      }
+      aFilters.push(`adelay=${delayMs}|${delayMs}`);
 
       const aLabel = `[a_${aStep}]`;
-      filterParts.push(
-        `[${idx}:a]atrim=start=${inPt.toFixed(3)}:duration=${dur.toFixed(3)},asetpts=PTS-STARTPTS,volume=${vol.toFixed(3)},adelay=${delayMs}|${delayMs}${aLabel}`
-      );
+      filterParts.push(`[${idx}:a]${aFilters.join(',')}${aLabel}`);
       audioLabels.push(aLabel);
       aStep++;
     }

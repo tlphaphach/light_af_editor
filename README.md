@@ -17,7 +17,7 @@ A lightweight, portable Windows video & meme editor with a **persistent Meme & S
   - 4 tracks: `V2` (Overlay / Meme), `V1` (Main Video), `A1` (SFX / Sound), `A2` (Music / Audio).
   - Drag to move, drag edges to trim, **Split (`S`)**, **Duplicate (`Ctrl+D`)**, **Delete (`Del`)**, edge snapping, `Ctrl + Scroll` timeline zoom, and automatic playhead scrolling.
 - **Clip Inspector & Media Properties**:
-  - Adjust volume (`0%–200%`), mute, and overlay **Scale / Position X / Position Y** for memes and images.
+  - Adjust **Fade In / Fade Out** durations (visual alpha & audio gain), **Volume (`0%–200%`)**, **Mute**, **Opacity (`0%–100%`)**, and overlay **Scale / Position X / Position Y** for memes and images.
   - Inspect media properties (format, resolution, duration, file size, and audio/video streams).
 - **High-Resolution Export**:
   - Export MP4 (H.264 + AAC) in **720p**, **1080p**, **2K (1440p)**, **4K (2160p)**, **9:16 Vertical (1080p/2K/4K)**, and **1:1 Square**.
@@ -66,7 +66,7 @@ light_af_editor/
 ## Quick Start
 
 ### 1. For End Users (Portable Zip — No Installation Needed)
-1. Download `LightAFEditor-v1.0.0-Portable.zip` from the [**Releases**](../../releases) page.
+1. Download `LightAFEditor-v1.1.0-Portable.zip` from the [**Releases**](../../releases) page.
 2. Right-click the `.zip` → **Extract All...** anywhere (Desktop, Documents, or a USB drive).
 3. Double-click **`LightAFEditor.exe`** (Node.js and FFmpeg are already bundled inside).
 

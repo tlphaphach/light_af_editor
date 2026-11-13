@@ -2,6 +2,13 @@
 
 All notable changes to **LightAF Editor** are documented in this file.
 
+## [1.1.0] - 2026-11-14
+
+### Added
+- **Fade In & Fade Out**: Added `Fade In (s)` and `Fade Out (s)` controls in the Clip Inspector for both visual (video/image alpha) and audio (volume) clips, with real-time canvas/audio preview and matching FFmpeg `fade`/`afade` export filters.
+- **Image & Visual Opacity**: Added an `Opacity (0%–100%)` slider in the Clip Inspector's transform section (included in **Reset**), rendered in real-time on `<canvas>` and exported via FFmpeg `colorchannelmixer`.
+- **Smart Split Fade Handling**: Splitting a clip (`S`) preserves `Fade In` on the left segment and `Fade Out` on the right segment while carrying over `Opacity` to both.
+
 ## [1.0.0] - 2026-11-13
 
 ### Added

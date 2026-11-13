@@ -369,6 +369,9 @@
       scale: item.category === 'meme' && track === 'V2' ? 60 : 100,
       x: 0,
       y: 0,
+      opacity: 100,
+      fadeIn: 0,
+      fadeOut: 0,
     };
 
     state.project.clips.push(clip);
@@ -454,7 +457,27 @@
     timecodeDisplay.textContent = `${formatTime(t)} / ${formatTime(total)}`;
   }
 
+  function getClipFadeFactor(clip, t) {
+    const dur = Math.max(0.05, clip.duration || 0);
+    const elapsed = t - clip.start;
+    const remaining = clip.start + dur - t;
+    const fadeIn = Math.max(0, clip.fadeIn || 0);
+    const fadeOut = Math.max(0, clip.fadeOut || 0);
+    let factor = 1;
+    if (fadeIn > 0 && elapsed < fadeIn) {
+      factor = Math.min(factor, elapsed / fadeIn);
+    }
+    if (fadeOut > 0 && remaining < fadeOut) {
+      factor = Math.min(factor, remaining / fadeOut);
+    }
+    return Math.max(0, Math.min(1, factor));
+  }
+
   function drawScaledLayer(el, srcW, srcH, clip, canvasW, canvasH) {
+    const baseOpacity = Math.max(0, Math.min(1, (clip.opacity !== undefined ? clip.opacity : 100) / 100));
+    const effectiveOpacity = baseOpacity * getClipFadeFactor(clip, state.playhead);
+    if (effectiveOpacity <= 0) return;
+
     const scalePct = (clip.scale !== undefined ? clip.scale : 100) / 100;
     const maxW = canvasW * scalePct;
     const maxH = canvasH * scalePct;
@@ -465,7 +488,10 @@
     const offsetY = ((clip.y || 0) / 100) * canvasH;
     const dx = (canvasW - drawW) / 2 + offsetX;
     const dy = (canvasH - drawH) / 2 + offsetY;
+    ctx.save();
+    ctx.globalAlpha = effectiveOpacity;
     ctx.drawImage(el, dx, dy, drawW, drawH);
+    ctx.restore();
   }
 
   function syncMediaToPlayhead(playing) {
@@ -479,7 +505,8 @@
       if (isActive) {
         const targetTime = Math.max(0, t - clip.start + (clip.inPoint || 0));
         el.muted = !!clip.muted;
-        el.volume = Math.min(1, Math.max(0, (clip.volume !== undefined ? clip.volume : 100) / 100));
+        const baseVol = Math.min(1, Math.max(0, (clip.volume !== undefined ? clip.volume : 100) / 100));
+        el.volume = baseVol * getClipFadeFactor(clip, t);
 
         if (Math.abs(el.currentTime - targetTime) > (playing ? 0.18 : 0.04)) {
           el.currentTime = targetTime;
@@ -743,7 +770,9 @@
 
     const leftDur = t - clip.start;
     const rightDur = clip.duration - leftDur;
+    const origFadeOut = clip.fadeOut || 0;
     clip.duration = leftDur;
+    clip.fadeOut = 0;
 
     const rightClip = {
       ...clip,
@@ -751,6 +780,8 @@
       start: t,
       duration: rightDur,
       inPoint: (clip.inPoint || 0) + leftDur,
+      fadeIn: 0,
+      fadeOut: origFadeOut,
     };
 
     state.project.clips.push(rightClip);
@@ -801,6 +832,8 @@
     $('inspClipName').textContent = item ? `${item.name} (${clip.track})` : clip.track;
     $('inspStart').value = clip.start.toFixed(2);
     $('inspDuration').value = clip.duration.toFixed(2);
+    $('inspFadeIn').value = (clip.fadeIn || 0).toFixed(1);
+    $('inspFadeOut').value = (clip.fadeOut || 0).toFixed(1);
     $('inspVolume').value = clip.volume !== undefined ? clip.volume : 100;
     $('inspVolumeVal').textContent = `${$('inspVolume').value}%`;
     $('inspMuted').checked = !!clip.muted;
@@ -816,6 +849,8 @@
       $('inspXVal').textContent = `${$('inspX').value}%`;
       $('inspY').value = clip.y || 0;
       $('inspYVal').textContent = `${$('inspY').value}%`;
+      $('inspOpacity').value = clip.opacity !== undefined ? clip.opacity : 100;
+      $('inspOpacityVal').textContent = `${$('inspOpacity').value}%`;
     }
     renderMediaProps($('inspMediaProps'), item);
   }
@@ -836,6 +871,22 @@
       if (!c) return;
       c.duration = Math.max(0.1, parseFloat(e.target.value) || 0.1);
       renderTimeline();
+      drawPreviewFrame();
+    });
+
+    $('inspFadeIn').addEventListener('input', (e) => {
+      const c = getSelected();
+      if (!c) return;
+      c.fadeIn = Math.max(0, parseFloat(e.target.value) || 0);
+      syncMediaToPlayhead(state.isPlaying);
+      drawPreviewFrame();
+    });
+
+    $('inspFadeOut').addEventListener('input', (e) => {
+      const c = getSelected();
+      if (!c) return;
+      c.fadeOut = Math.max(0, parseFloat(e.target.value) || 0);
+      syncMediaToPlayhead(state.isPlaying);
       drawPreviewFrame();
     });
 
@@ -878,12 +929,21 @@
       drawPreviewFrame();
     });
 
+    $('inspOpacity').addEventListener('input', (e) => {
+      const c = getSelected();
+      if (!c) return;
+      c.opacity = parseInt(e.target.value, 10);
+      $('inspOpacityVal').textContent = `${c.opacity}%`;
+      drawPreviewFrame();
+    });
+
     $('btnResetTransform').addEventListener('click', () => {
       const c = getSelected();
       if (!c) return;
       c.scale = 100;
       c.x = 0;
       c.y = 0;
+      c.opacity = 100;
       renderInspector();
       drawPreviewFrame();
     });

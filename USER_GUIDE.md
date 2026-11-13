@@ -11,7 +11,7 @@ Welcome to **LightAF Editor**, a lightweight, portable Windows video & meme edit
 - **No extra software required** when using the portable release zip (`releases/LightAFEditor-v<version>-Portable.zip`)—both Node.js and FFmpeg are already bundled inside.
 
 ### Setup Steps (Portable Release)
-1. Download `LightAFEditor-v1.0.0-Portable.zip` from the [**GitHub Releases**](../../releases) page (or from `releases/`).
+1. Download `LightAFEditor-v1.1.0-Portable.zip` from the [**GitHub Releases**](../../releases) page (or from `releases/`).
 2. Right-click the `.zip` file → **Extract All...** and extract the `LightAFEditor` folder anywhere you like (Desktop, Documents, or a USB drive).
 3. Open the extracted folder and double-click **`LightAFEditor.exe`** to launch the editor.
 
@@ -69,8 +69,9 @@ The **Library** on the left panel is permanent—anything you add stays there ev
 
 Click any clip on the timeline to open its settings in the right-hand **Clip Inspector**:
 - **Start (s) / Duration (s)**: Fine-tune exact timing.
+- **Fade In (s) / Fade Out (s)**: Smoothly fade visual opacity and/or audio volume in and out at the start and end of any clip.
 - **Volume (`0%–200%`) & Mute**: Boost quiet sound effects or mute a video's original audio.
-- **Overlay Transform (Video/Image clips)**: Adjust **Scale (`10%–200%`)**, **Position X**, and **Position Y** (or click **Reset**) to resize and position meme overlays anywhere on screen.
+- **Overlay Transform & Opacity (Video/Image clips)**: Adjust **Scale (`10%–200%`)**, **Position X**, **Position Y**, and **Opacity (`0%–100%`)** (or click **Reset**) to resize, position, and blend images or meme overlays anywhere on screen.
 - **Media Properties**: View the source file's format, resolution, duration, file size, and audio/video streams.
 
 ---
