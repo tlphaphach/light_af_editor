@@ -1,0 +1,17 @@
+# Dependencies & bundled binaries
+node_modules/
+bin/
+
+# Portable user data & rendered outputs
+data/
+exports/
+
+# Release artifacts (upload to GitHub Releases instead)
+releases/
+dist/
+
+# Logs & OS files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

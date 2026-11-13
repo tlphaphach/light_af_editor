@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LightAF Editor — Portable Video & Meme Editor</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand">
+          <img src="/logo.png" class="brand-logo" alt="LightAF Editor Logo" />
+          <span>LightAF Editor</span>
+        </div>
+        <input id="projectName" class="project-name-input" type="text" value="Untitled Video" title="Project Name" />
+        <select id="aspectSelect" class="select-compact" title="Canvas Resolution">
+          <option value="1280x720">16:9 (720p HD)</option>
+          <option value="1920x1080">16:9 (1080p FHD)</option>
+          <option value="2560x1440">16:9 (2K QHD)</option>
+          <option value="3840x2160">16:9 (4K UHD)</option>
+          <option value="1080x1920">9:16 (1080p Shorts/TikTok)</option>
+          <option value="1440x2560">9:16 (2K Vertical)</option>
+          <option value="2160x3840">9:16 (4K Vertical)</option>
+          <option value="1080x1080">1:1 (Square)</option>
+        </select>
+      </div>
+      <div class="topbar-right">
+        <button id="btnContextMenu" class="toggle-btn" type="button" aria-pressed="false" title="Toggle 'Edit with LightAF Editor' in Windows File Explorer right-click menu">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">Explorer Menu</span>
+        </button>
+        <button id="btnThemeToggle" class="toggle-btn" type="button" aria-pressed="false" title="Toggle Dark / Light Theme">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label" id="themeToggleLabel">🌙 Dark</span>
+        </button>
+        <button id="btnNewProject" class="btn btn-ghost" title="New empty timeline (keeps your Library)">New</button>
+        <button id="btnSaveProject" class="btn btn-ghost" title="Save project">Save</button>
+        <button id="btnProjectsModal" class="btn btn-ghost" title="Load saved projects">Projects</button>
+        <button id="btnExport" class="btn btn-primary">Export MP4</button>
+      </div>
+    </header>
+
+    <!-- Main 3-Column Workspace -->
+    <main class="workspace">
+      <!-- Left: Persistent Library -->
+      <aside class="panel library-panel" id="libraryPanel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Library</span>
+            <span class="badge" id="libraryCount">0</span>
+          </div>
+          <button id="btnAddLibrary" class="btn btn-accent btn-sm">+ Add Media</button>
+          <input id="libraryFileInput" type="file" multiple accept="video/*,audio/*,image/*" hidden />
+        </div>
+
+        <div class="library-controls">
+          <input id="librarySearch" class="search-input" type="text" placeholder="Search memes, SFX, footage..." />
+          <div class="filter-pills" id="libraryFilters">
+            <button class="pill active" data-filter="all">All</button>
+            <button class="pill" data-filter="fav">★ Fav</button>
+            <button class="pill" data-filter="meme">Memes</button>
+            <button class="pill" data-filter="sfx">SFX</button>
+            <button class="pill" data-filter="footage">Footage</button>
+            <button class="pill" data-filter="image">Images</button>
+          </div>
+        </div>
+
+        <div class="library-dropzone" id="libraryDropzone">
+          <div class="dropzone-hint">Drop videos, memes, sounds or images here — saved permanently in your portable Library</div>
+          <div class="library-grid" id="libraryGrid"></div>
+        </div>
+
+        <!-- Mini Library Preview Bar -->
+        <div class="library-preview-bar hidden" id="libPreviewBar">
+          <video id="libPreviewVideo" class="hidden" playsinline></video>
+          <audio id="libPreviewAudio"></audio>
+          <div class="lib-preview-info">
+            <span id="libPreviewName" class="truncate">Preview</span>
+            <button id="btnStopLibPreview" class="btn btn-ghost btn-xs">Stop</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Video Preview + Transport -->
+      <section class="panel preview-panel">
+        <div class="preview-stage" id="previewStage">
+          <canvas id="previewCanvas" width="1280" height="720"></canvas>
+          <div class="preview-empty-hint" id="previewEmptyHint">
+            Drag clips from your Library onto the Timeline below
+          </div>
+        </div>
+
+        <div class="transport-bar">
+          <div class="transport-left">
+            <button id="btnJumpStart" class="btn btn-icon" title="Jump to Start (Home)">⏮</button>
+            <button id="btnStepBack" class="btn btn-icon" title="Step Back 0.5s (Left Arrow)">◀</button>
+            <button id="btnPlayPause" class="btn btn-play" title="Play / Pause (Space)">▶</button>
+            <button id="btnStepFwd" class="btn btn-icon" title="Step Forward 0.5s (Right Arrow)">▶</button>
+            <span class="timecode" id="timecodeDisplay">00:00.0 / 00:00.0</span>
+          </div>
+          <div class="transport-right">
+            <button id="btnSplit" class="btn btn-ghost btn-sm" title="Split selected clip at playhead (S)">✂ Split</button>
+            <button id="btnDuplicate" class="btn btn-ghost btn-sm" title="Duplicate selected clip (Ctrl+D)">⧉ Dup</button>
+            <button id="btnDeleteClip" class="btn btn-ghost btn-sm btn-danger-text" title="Delete selected clip (Del)">🗑 Delete</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Clip Inspector -->
+      <aside class="panel inspector-panel">
+        <div class="panel-header">
+          <div class="panel-title">Clip Inspector</div>
+        </div>
+        <div class="inspector-body" id="inspectorBody">
+          <div class="inspector-empty" id="inspectorEmpty">
+            <p>Select a clip on the timeline to adjust volume, trim, scale, or overlay position.</p>
+            <div class="shortcuts-box">
+              <div class="shortcut-row"><kbd>Space</kbd><span>Play / Pause</span></div>
+              <div class="shortcut-row"><kbd>S</kbd><span>Split at Playhead</span></div>
+              <div class="shortcut-row"><kbd>Del</kbd><span>Delete Clip</span></div>
+              <div class="shortcut-row"><kbd>Ctrl+D</kbd><span>Duplicate Clip</span></div>
+              <div class="shortcut-row"><kbd>← / →</kbd><span>Nudge Playhead</span></div>
+            </div>
+          </div>
+
+          <div class="inspector-form hidden" id="inspectorForm">
+            <div class="insp-group">
+              <label class="insp-label">Clip</label>
+              <div class="insp-value" id="inspClipName">-</div>
+            </div>
+            <div class="insp-row">
+              <div class="insp-group">
+                <label class="insp-label">Start (s)</label>
+                <input id="inspStart" type="number" step="0.1" min="0" class="insp-input" />
+              </div>
+              <div class="insp-group">
+                <label class="insp-label">Duration (s)</label>
+                <input id="inspDuration" type="number" step="0.1" min="0.1" class="insp-input" />
+              </div>
+            </div>
+
+            <div class="insp-group" id="inspAudioSection">
+              <div class="insp-label-row">
+                <label class="insp-label">Volume: <span id="inspVolumeVal">100%</span></label>
+                <label class="checkbox-inline"><input type="checkbox" id="inspMuted" /> Mute</label>
+              </div>
+              <input id="inspVolume" type="range" min="0" max="200" value="100" class="slider" />
+            </div>
+
+            <div id="inspTransformSection">
+              <div class="insp-group">
+                <div class="insp-label-row">
+                  <label class="insp-label">Scale: <span id="inspScaleVal">100%</span></label>
+                  <button id="btnResetTransform" class="btn btn-ghost btn-xs">Reset</button>
+                </div>
+                <input id="inspScale" type="range" min="10" max="200" value="100" class="slider" />
+              </div>
+              <div class="insp-group">
+                <label class="insp-label">Position X: <span id="inspXVal">0%</span></label>
+                <input id="inspX" type="range" min="-50" max="50" value="0" class="slider" />
+              </div>
+              <div class="insp-group">
+                <label class="insp-label">Position Y: <span id="inspYVal">0%</span></label>
+                <input id="inspY" type="range" min="-50" max="50" value="0" class="slider" />
+              </div>
+            </div>
+
+            <div class="insp-group">
+              <label class="insp-label">Media Properties</label>
+              <div class="media-props-box" id="inspMediaProps"></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Bottom: Multi-Track Timeline -->
+    <section class="timeline-section">
+      <div class="timeline-toolbar">
+        <div class="timeline-toolbar-left">
+          <span class="timeline-label">Timeline</span>
+          <label class="checkbox-inline" title="Snap clips to playhead and other clip edges">
+            <input type="checkbox" id="snapToggle" checked /> Snap
+          </label>
+        </div>
+        <div class="timeline-toolbar-right">
+          <span class="zoom-label">Zoom</span>
+          <button id="btnZoomOut" class="btn btn-ghost btn-xs">−</button>
+          <input id="zoomSlider" type="range" min="15" max="160" value="50" class="slider slider-sm" />
+          <button id="btnZoomIn" class="btn btn-ghost btn-xs">+</button>
+        </div>
+      </div>
+
+      <div class="timeline-container" id="timelineContainer">
+        <div class="timeline-headers">
+          <div class="ruler-corner">Time</div>
+          <div class="track-header" data-track="V2">
+            <span class="track-badge track-v2">V2</span>
+            <span>Overlay / Meme</span>
+          </div>
+          <div class="track-header" data-track="V1">
+            <span class="track-badge track-v1">V1</span>
+            <span>Main Video</span>
+          </div>
+          <div class="track-header" data-track="A1">
+            <span class="track-badge track-a1">A1</span>
+            <span>SFX / Sound</span>
+          </div>
+          <div class="track-header" data-track="A2">
+            <span class="track-badge track-a2">A2</span>
+            <span>Music / Audio</span>
+          </div>
+        </div>
+
+        <div class="timeline-scroll" id="timelineScroll">
+          <div class="timeline-canvas" id="timelineCanvas">
+            <div class="time-ruler" id="timeRuler"></div>
+            <div class="track-lane" data-track="V2" data-accept="visual"></div>
+            <div class="track-lane" data-track="V1" data-accept="visual"></div>
+            <div class="track-lane" data-track="A1" data-accept="audio"></div>
+            <div class="track-lane" data-track="A2" data-accept="audio"></div>
+            <div class="playhead" id="playhead">
+              <div class="playhead-head"></div>
+              <div class="playhead-line"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-backdrop hidden" id="exportModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Export Video</h3>
+        <button class="btn btn-ghost btn-xs" id="btnCloseExport">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="exportStatusText" class="export-status">Preparing render...</div>
+        <div class="progress-track">
+          <div class="progress-fill" id="exportProgressBar" style="width: 0%"></div>
+        </div>
+        <div class="export-actions hidden" id="exportDoneActions">
+          <a id="btnDownloadExport" class="btn btn-primary" download>Download MP4</a>
+          <button id="btnOpenExportsFolder" class="btn btn-ghost">Open Exports Folder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projects Modal -->
+  <div class="modal-backdrop hidden" id="projectsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Saved Projects</h3>
+        <button class="btn btn-ghost btn-xs" id="btnCloseProjects">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="projectsList" class="projects-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Library Item Edit Modal -->
+  <div class="modal-backdrop hidden" id="libEditModal">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>Edit Library Item</h3>
+        <button class="btn btn-ghost btn-xs" id="btnCloseLibEdit">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="insp-group">
+          <label class="insp-label">Name</label>
+          <input id="libEditName" type="text" class="insp-input" />
+        </div>
+        <div class="insp-group">
+          <label class="insp-label">Category</label>
+          <select id="libEditCategory" class="insp-input">
+            <option value="meme">Meme</option>
+            <option value="sfx">SFX / Sound</option>
+            <option value="footage">Footage</option>
+            <option value="image">Image / Overlay</option>
+          </select>
+        </div>
+        <div class="insp-group">
+          <label class="insp-label">Media Properties</label>
+          <div class="media-props-box" id="libEditProps"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="btnLibEditDelete" class="btn btn-ghost btn-danger-text">Delete from Library</button>
+          <button id="btnLibEditSave" class="btn btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
