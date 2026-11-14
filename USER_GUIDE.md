@@ -11,7 +11,7 @@ Welcome to **LightAF Editor**, a lightweight, portable Windows video & meme edit
 - **No extra software required** when using the portable release zip (`releases/LightAFEditor-v<version>-Portable.zip`)—both Node.js and FFmpeg are already bundled inside.
 
 ### Setup Steps (Portable Release)
-1. Download `LightAFEditor-v1.1.0-Portable.zip` from the [**GitHub Releases**](../../releases) page (or from `releases/`).
+1. Download `LightAFEditor-v1.2.0-Portable.zip` from the [**GitHub Releases**](../../releases) page (or from `releases/`).
 2. Right-click the `.zip` file → **Extract All...** and extract the `LightAFEditor` folder anywhere you like (Desktop, Documents, or a USB drive).
 3. Open the extracted folder and double-click **`LightAFEditor.exe`** to launch the editor.
 
@@ -58,6 +58,7 @@ The **Library** on the left panel is permanent—anything you add stays there ev
   3. Press **`S`** (or click **`✂ Split`**).
 - **Duplicate (`Ctrl+D`)**: Select a clip and press **`Ctrl+D`** (or click **`⧉ Dup`**) to clone it.
 - **Delete (`Del`)**: Select a clip and press **`Del`** or **`Backspace`** (or click **`🗑 Delete`**).
+- **Undo / Redo (`Ctrl+Z` / `Ctrl+Y`)**: Click **`↶ Undo`** or **`↷ Redo`** in the transport bar (or press **`Ctrl+Z`** / **`Ctrl+Y`** / **`Ctrl+Shift+Z`**) to step backward or forward through timeline, inspector, and aspect-ratio changes.
 
 ### Zooming & Scrolling
 - **Zoom Timeline**: Hold **`Ctrl` + Scroll Up / Down** over the timeline to zoom in/out without zooming the app UI, or use the **Zoom** slider and **`-` / `+`** buttons.
@@ -70,8 +71,9 @@ The **Library** on the left panel is permanent—anything you add stays there ev
 Click any clip on the timeline to open its settings in the right-hand **Clip Inspector**:
 - **Start (s) / Duration (s)**: Fine-tune exact timing.
 - **Fade In (s) / Fade Out (s)**: Smoothly fade visual opacity and/or audio volume in and out at the start and end of any clip.
+- **Speed (`0.1x–100x`)**: Adjust playback speed for video and audio clips using the logarithmic speed bar (or click **`1x`** to reset). Changing speed automatically scales the clip's duration on the timeline.
 - **Volume (`0%–200%`) & Mute**: Boost quiet sound effects or mute a video's original audio.
-- **Overlay Transform & Opacity (Video/Image clips)**: Adjust **Scale (`10%–200%`)**, **Position X**, **Position Y**, and **Opacity (`0%–100%`)** (or click **Reset**) to resize, position, and blend images or meme overlays anywhere on screen.
+- **Overlay Transform & Opacity (Video/Image clips)**: Adjust **Scale (`10%–500%`)**, **Position X**, **Position Y**, and **Opacity (`0%–100%`)** (or click **Reset**) to resize, position, and blend images or meme overlays anywhere on screen.
 - **Media Properties**: View the source file's format, resolution, duration, file size, and audio/video streams.
 
 ---
@@ -111,6 +113,8 @@ Click any clip on the timeline to open its settings in the right-hand **Clip Ins
 | `S` | Split selected clip at playhead |
 | `Del` / `Backspace` | Delete selected clip |
 | `Ctrl + D` | Duplicate selected clip |
+| `Ctrl + Z` | Undo |
+| `Ctrl + Y` / `Ctrl + Shift + Z` | Redo |
 | `←` / `→` | Step playhead backward / forward (`0.5s`) |
 | `Home` | Jump playhead to start (`00:00.0`) |
 | `Ctrl + Scroll` | Zoom timeline in / out |

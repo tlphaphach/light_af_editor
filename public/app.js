@@ -27,6 +27,79 @@
   let rafId = null;
   let lastFrameTime = 0;
 
+  // --- Undo / Redo History ---
+  const MAX_HISTORY = 100;
+  const undoStack = [];
+  const redoStack = [];
+  let pendingInspectorSnapshot = null;
+
+  function createSnapshot() {
+    return {
+      clips: JSON.parse(JSON.stringify(state.project.clips)),
+      width: state.project.width,
+      height: state.project.height,
+      selectedClipId: state.selectedClipId,
+    };
+  }
+
+  function updateUndoRedoButtons() {
+    const btnUndo = $('btnUndo');
+    const btnRedo = $('btnRedo');
+    if (btnUndo) btnUndo.disabled = undoStack.length === 0;
+    if (btnRedo) btnRedo.disabled = redoStack.length === 0;
+  }
+
+  function pushHistory(snapshot = createSnapshot()) {
+    undoStack.push(snapshot);
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack.length = 0;
+    updateUndoRedoButtons();
+  }
+
+  function clearHistory() {
+    undoStack.length = 0;
+    redoStack.length = 0;
+    pendingInspectorSnapshot = null;
+    updateUndoRedoButtons();
+  }
+
+  function applySnapshot(snap) {
+    state.project.clips = JSON.parse(JSON.stringify(snap.clips));
+    state.project.width = snap.width;
+    state.project.height = snap.height;
+    state.selectedClipId =
+      snap.selectedClipId && state.project.clips.some((c) => c.id === snap.selectedClipId)
+        ? snap.selectedClipId
+        : null;
+
+    const aspectVal = `${state.project.width}x${state.project.height}`;
+    const aspectEl = $('aspectSelect');
+    if (aspectEl && [...aspectEl.options].some((o) => o.value === aspectVal)) {
+      aspectEl.value = aspectVal;
+    }
+
+    renderTimeline();
+    renderInspector();
+    syncMediaToPlayhead(state.isPlaying);
+    drawPreviewFrame();
+  }
+
+  function undo() {
+    if (!undoStack.length) return;
+    pendingInspectorSnapshot = null;
+    redoStack.push(createSnapshot());
+    applySnapshot(undoStack.pop());
+    updateUndoRedoButtons();
+  }
+
+  function redo() {
+    if (!redoStack.length) return;
+    pendingInspectorSnapshot = null;
+    undoStack.push(createSnapshot());
+    applySnapshot(redoStack.pop());
+    updateUndoRedoButtons();
+  }
+
   // --- DOM Refs ---
   const $ = (id) => document.getElementById(id);
   const previewCanvas = $('previewCanvas');
@@ -51,6 +124,13 @@
     const m = Math.floor(s / 60);
     const rem = (s % 60).toFixed(1).padStart(4, '0');
     return `${String(m).padStart(2, '0')}:${rem}`;
+  }
+
+  function formatSpeed(speed) {
+    const s = Math.max(0.1, Math.min(100, speed || 1));
+    if (s >= 10) return `${s.toFixed(1).replace(/\.0$/, '')}x`;
+    if (s >= 1) return `${s.toFixed(2).replace(/0$/, '')}x`;
+    return `${s.toFixed(2)}x`;
   }
 
   function showToast(msg, ms = 2600) {
@@ -332,6 +412,12 @@
     await fetch(`/api/library/${id}`, { method: 'DELETE' });
     state.library = state.library.filter((i) => i.id !== id);
     state.project.clips = state.project.clips.filter((c) => c.libraryId !== id);
+    for (const snap of undoStack) {
+      snap.clips = snap.clips.filter((c) => c.libraryId !== id);
+    }
+    for (const snap of redoStack) {
+      snap.clips = snap.clips.filter((c) => c.libraryId !== id);
+    }
     if (state.selectedClipId && !state.project.clips.some((c) => c.id === state.selectedClipId)) {
       state.selectedClipId = null;
     }
@@ -372,8 +458,10 @@
       opacity: 100,
       fadeIn: 0,
       fadeOut: 0,
+      speed: 1,
     };
 
+    pushHistory();
     state.project.clips.push(clip);
     state.selectedClipId = clip.id;
     renderTimeline();
@@ -503,20 +591,29 @@
       const isActive = t >= clip.start && t < clip.start + clip.duration;
 
       if (isActive) {
-        const targetTime = Math.max(0, t - clip.start + (clip.inPoint || 0));
-        el.muted = !!clip.muted;
+        const speed = Math.max(0.1, Math.min(100, clip.speed || 1));
+        const targetTime = Math.max(0, (t - clip.start) * speed + (clip.inPoint || 0));
+        el.muted = !!clip.muted || speed > 16;
         const baseVol = Math.min(1, Math.max(0, (clip.volume !== undefined ? clip.volume : 100) / 100));
         el.volume = baseVol * getClipFadeFactor(clip, t);
 
-        if (Math.abs(el.currentTime - targetTime) > (playing ? 0.18 : 0.04)) {
+        const clampedRate = Math.min(16, Math.max(0.1, speed));
+        if (Math.abs(el.playbackRate - clampedRate) > 0.001) {
+          try {
+            el.playbackRate = clampedRate;
+          } catch {}
+        }
+
+        const driftThreshold = playing ? (speed > 16 ? 0.05 : 0.18 * speed) : 0.04;
+        if (Math.abs(el.currentTime - targetTime) > driftThreshold) {
           el.currentTime = targetTime;
           if (!playing) {
             el.onseeked = () => drawPreviewFrame();
           }
         }
-        if (playing && el.paused) {
+        if (playing && el.paused && speed <= 16) {
           el.play().catch(() => {});
-        } else if (!playing && !el.paused) {
+        } else if ((!playing || speed > 16) && !el.paused) {
           el.pause();
         }
       } else {
@@ -683,6 +780,9 @@
     const origStart = clip.start;
     const origDur = clip.duration;
     const origIn = clip.inPoint || 0;
+    const origTrack = clip.track;
+    const speed = Math.max(0.1, Math.min(100, clip.speed || 1));
+    const beforeSnapshot = createSnapshot();
     const maxSrcDur = item.mediaType === 'image' ? 3600 : item.duration || 60;
     const snapPts = getSnapPoints(clip.id);
 
@@ -691,16 +791,16 @@
 
       if (trimSide === 'left') {
         const maxDelta = origDur - 0.15;
-        const minDelta = -origIn;
+        const minDelta = -origIn / speed;
         const clamped = Math.max(minDelta, Math.min(maxDelta, dxSec));
         let newStart = Math.max(0, origStart + clamped);
         newStart = applySnap(newStart, snapPts);
         const appliedDelta = newStart - origStart;
         clip.start = newStart;
-        clip.inPoint = Math.max(0, origIn + appliedDelta);
+        clip.inPoint = Math.max(0, origIn + appliedDelta * speed);
         clip.duration = Math.max(0.15, origDur - appliedDelta);
       } else if (trimSide === 'right') {
-        const maxDur = maxSrcDur - origIn;
+        const maxDur = (maxSrcDur - origIn) / speed;
         let newEnd = Math.max(origStart + 0.15, origStart + Math.min(maxDur, origDur + dxSec));
         newEnd = applySnap(newEnd, snapPts);
         clip.duration = Math.max(0.15, Math.min(maxDur, newEnd - origStart));
@@ -728,6 +828,14 @@
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      const changed =
+        clip.start !== origStart ||
+        clip.duration !== origDur ||
+        (clip.inPoint || 0) !== origIn ||
+        clip.track !== origTrack;
+      if (changed) {
+        pushHistory(beforeSnapshot);
+      }
       syncMediaToPlayhead(state.isPlaying);
     };
 
@@ -768,6 +876,7 @@
       return showToast('Move playhead inside the selected clip to split');
     }
 
+    pushHistory();
     const leftDur = t - clip.start;
     const rightDur = clip.duration - leftDur;
     const origFadeOut = clip.fadeOut || 0;
@@ -779,7 +888,7 @@
       id: uid(),
       start: t,
       duration: rightDur,
-      inPoint: (clip.inPoint || 0) + leftDur,
+      inPoint: (clip.inPoint || 0) + leftDur * (clip.speed || 1),
       fadeIn: 0,
       fadeOut: origFadeOut,
     };
@@ -793,6 +902,7 @@
   function duplicateSelectedClip() {
     const clip = state.project.clips.find((c) => c.id === state.selectedClipId);
     if (!clip) return showToast('Select a clip first');
+    pushHistory();
     const copy = {
       ...clip,
       id: uid(),
@@ -806,6 +916,7 @@
 
   function deleteSelectedClip() {
     if (!state.selectedClipId) return;
+    pushHistory();
     state.project.clips = state.project.clips.filter((c) => c.id !== state.selectedClipId);
     state.selectedClipId = null;
     renderTimeline();
@@ -839,8 +950,16 @@
     $('inspMuted').checked = !!clip.muted;
 
     const isVisual = clip.track.startsWith('V');
+    const isImage = item && item.mediaType === 'image';
     $('inspTransformSection').classList.toggle('hidden', !isVisual);
-    $('inspAudioSection').classList.toggle('hidden', item && item.mediaType === 'image');
+    $('inspSpeedSection').classList.toggle('hidden', isImage);
+    $('inspAudioSection').classList.toggle('hidden', isImage);
+
+    if (!isImage) {
+      const speed = Math.max(0.1, Math.min(100, clip.speed || 1));
+      $('inspSpeed').value = Math.log10(speed).toFixed(3);
+      $('inspSpeedVal').textContent = formatSpeed(speed);
+    }
 
     if (isVisual) {
       $('inspScale').value = clip.scale !== undefined ? clip.scale : 100;
@@ -857,10 +976,20 @@
 
   function bindInspectorInputs() {
     const getSelected = () => state.project.clips.find((c) => c.id === state.selectedClipId);
+    const capturePending = () => {
+      if (!pendingInspectorSnapshot) pendingInspectorSnapshot = createSnapshot();
+    };
+    const commitPending = () => {
+      if (pendingInspectorSnapshot) {
+        pushHistory(pendingInspectorSnapshot);
+        pendingInspectorSnapshot = null;
+      }
+    };
 
     $('inspStart').addEventListener('change', (e) => {
       const c = getSelected();
       if (!c) return;
+      pushHistory();
       c.start = Math.max(0, parseFloat(e.target.value) || 0);
       renderTimeline();
       drawPreviewFrame();
@@ -869,6 +998,7 @@
     $('inspDuration').addEventListener('change', (e) => {
       const c = getSelected();
       if (!c) return;
+      pushHistory();
       c.duration = Math.max(0.1, parseFloat(e.target.value) || 0.1);
       renderTimeline();
       drawPreviewFrame();
@@ -877,30 +1007,70 @@
     $('inspFadeIn').addEventListener('input', (e) => {
       const c = getSelected();
       if (!c) return;
+      capturePending();
       c.fadeIn = Math.max(0, parseFloat(e.target.value) || 0);
       syncMediaToPlayhead(state.isPlaying);
       drawPreviewFrame();
     });
+    $('inspFadeIn').addEventListener('change', commitPending);
 
     $('inspFadeOut').addEventListener('input', (e) => {
       const c = getSelected();
       if (!c) return;
+      capturePending();
       c.fadeOut = Math.max(0, parseFloat(e.target.value) || 0);
       syncMediaToPlayhead(state.isPlaying);
       drawPreviewFrame();
+    });
+    $('inspFadeOut').addEventListener('change', commitPending);
+
+    const applyClipSpeed = (c, newSpeed) => {
+      const oldSpeed = Math.max(0.1, Math.min(100, c.speed || 1));
+      const clampedSpeed = Math.round(Math.max(0.1, Math.min(100, newSpeed)) * 100) / 100;
+      const sourceSpan = c.duration * oldSpeed;
+      c.speed = clampedSpeed;
+      c.duration = Math.max(0.1, sourceSpan / clampedSpeed);
+      $('inspSpeedVal').textContent = formatSpeed(clampedSpeed);
+      $('inspDuration').value = c.duration.toFixed(2);
+      renderTimeline();
+      syncMediaToPlayhead(state.isPlaying);
+      drawPreviewFrame();
+    };
+
+    $('inspSpeed').addEventListener('input', (e) => {
+      const c = getSelected();
+      if (!c) return;
+      capturePending();
+      const rawLog = parseFloat(e.target.value);
+      const snappedLog = Math.abs(rawLog) < 0.025 ? 0 : rawLog;
+      if (snappedLog === 0) e.target.value = '0';
+      const newSpeed = snappedLog === 0 ? 1 : Math.pow(10, snappedLog);
+      applyClipSpeed(c, newSpeed);
+    });
+    $('inspSpeed').addEventListener('change', commitPending);
+
+    $('btnResetSpeed').addEventListener('click', () => {
+      const c = getSelected();
+      if (!c || (c.speed || 1) === 1) return;
+      pushHistory();
+      $('inspSpeed').value = '0';
+      applyClipSpeed(c, 1);
     });
 
     $('inspVolume').addEventListener('input', (e) => {
       const c = getSelected();
       if (!c) return;
+      capturePending();
       c.volume = parseInt(e.target.value, 10);
       $('inspVolumeVal').textContent = `${c.volume}%`;
       syncMediaToPlayhead(state.isPlaying);
     });
+    $('inspVolume').addEventListener('change', commitPending);
 
     $('inspMuted').addEventListener('change', (e) => {
       const c = getSelected();
       if (!c) return;
+      pushHistory();
       c.muted = e.target.checked;
       syncMediaToPlayhead(state.isPlaying);
     });
@@ -908,38 +1078,47 @@
     $('inspScale').addEventListener('input', (e) => {
       const c = getSelected();
       if (!c) return;
+      capturePending();
       c.scale = parseInt(e.target.value, 10);
       $('inspScaleVal').textContent = `${c.scale}%`;
       drawPreviewFrame();
     });
+    $('inspScale').addEventListener('change', commitPending);
 
     $('inspX').addEventListener('input', (e) => {
       const c = getSelected();
       if (!c) return;
+      capturePending();
       c.x = parseInt(e.target.value, 10);
       $('inspXVal').textContent = `${c.x}%`;
       drawPreviewFrame();
     });
+    $('inspX').addEventListener('change', commitPending);
 
     $('inspY').addEventListener('input', (e) => {
       const c = getSelected();
       if (!c) return;
+      capturePending();
       c.y = parseInt(e.target.value, 10);
       $('inspYVal').textContent = `${c.y}%`;
       drawPreviewFrame();
     });
+    $('inspY').addEventListener('change', commitPending);
 
     $('inspOpacity').addEventListener('input', (e) => {
       const c = getSelected();
       if (!c) return;
+      capturePending();
       c.opacity = parseInt(e.target.value, 10);
       $('inspOpacityVal').textContent = `${c.opacity}%`;
       drawPreviewFrame();
     });
+    $('inspOpacity').addEventListener('change', commitPending);
 
     $('btnResetTransform').addEventListener('click', () => {
       const c = getSelected();
       if (!c) return;
+      pushHistory();
       c.scale = 100;
       c.x = 0;
       c.y = 0;
@@ -1048,6 +1227,7 @@
             pausePlayback();
             state.project = d.project;
             state.selectedClipId = null;
+            clearHistory();
             $('projectName').value = state.project.name;
             $('aspectSelect').value = `${state.project.width}x${state.project.height}`;
             $('projectsModal').classList.add('hidden');
@@ -1139,6 +1319,9 @@
 
     $('aspectSelect').addEventListener('change', (e) => {
       const [w, h] = e.target.value.split('x').map(Number);
+      if (state.project.width !== w || state.project.height !== h) {
+        pushHistory();
+      }
       state.project.width = w;
       state.project.height = h;
       drawPreviewFrame();
@@ -1155,6 +1338,7 @@
         clips: [],
       };
       state.selectedClipId = null;
+      clearHistory();
       $('projectName').value = state.project.name;
       $('aspectSelect').value = '1280x720';
       renderTimeline();
@@ -1177,6 +1361,8 @@
     $('btnStepBack').addEventListener('click', () => seekPlayhead(state.playhead - 0.5));
     $('btnStepFwd').addEventListener('click', () => seekPlayhead(state.playhead + 0.5));
 
+    $('btnUndo').addEventListener('click', undo);
+    $('btnRedo').addEventListener('click', redo);
     $('btnSplit').addEventListener('click', splitSelectedClip);
     $('btnDuplicate').addEventListener('click', duplicateSelectedClip);
     $('btnDeleteClip').addEventListener('click', deleteSelectedClip);
@@ -1284,6 +1470,15 @@
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        ((e.shiftKey && e.key.toLowerCase() === 'z') || (!e.shiftKey && e.key.toLowerCase() === 'y'))
+      ) {
+        e.preventDefault();
+        redo();
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         splitSelectedClip();
@@ -1311,6 +1506,7 @@
   bindInspectorInputs();
   initRulerScrub();
   initDragAndDrop();
+  updateUndoRedoButtons();
   loadLibrary().then(handleInitialImportParam);
   renderTimeline();
   drawPreviewFrame();

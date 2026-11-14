@@ -2,6 +2,15 @@
 
 All notable changes to **LightAF Editor** are documented in this file.
 
+## [1.2.0] - 2026-11-14
+
+### Added
+- **Undo & Redo**: Added `↶ Undo` and `↷ Redo` buttons to the transport bar along with `Ctrl+Z` and `Ctrl+Y` / `Ctrl+Shift+Z` shortcuts, tracking clip edits, trims, splits, inspector adjustments, and aspect ratio changes (up to 100 steps).
+- **Clip Speed Adjustment (`0.1x–100x`)**: Added a logarithmic **Speed** slider (`0.1x` to `100x`) and `1x` reset button in the Clip Inspector for video and audio clips, automatically scaling clip duration on the timeline and exporting via FFmpeg `setpts` and chained `atempo` filters.
+
+### Changed
+- **Expanded Scale Range**: Increased the maximum Clip Inspector **Scale** from `200%` to `500%` (`10%–500%`).
+
 ## [1.1.0] - 2026-11-14
 
 ### Added
