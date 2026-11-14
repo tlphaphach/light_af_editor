@@ -67,6 +67,14 @@
             <button class="pill" data-filter="footage">Footage</button>
             <button class="pill" data-filter="image">Images</button>
           </div>
+          <div class="lib-sel-bar hidden" id="libSelectionBar">
+            <span id="libSelCount" class="lib-sel-count">0 selected</span>
+            <div class="lib-sel-actions">
+              <button id="btnSelectAllLib" class="btn btn-ghost btn-xs" title="Select all visible items">All</button>
+              <button id="btnClearLibSel" class="btn btn-ghost btn-xs" title="Clear selection">Clear</button>
+              <button id="btnDeleteSelectedLib" class="btn btn-ghost btn-xs btn-danger-text" title="Delete selected media from Library">🗑 Delete</button>
+            </div>
+          </div>
         </div>
 
         <div class="library-dropzone" id="libraryDropzone">
@@ -174,8 +182,68 @@
               <input id="inspVolume" type="range" min="0" max="200" value="100" class="slider" />
             </div>
 
-            <div id="inspTransformSection">
+            <div id="inspTextSection" class="hidden">
               <div class="insp-group">
+                <label class="insp-label">Text Content</label>
+                <textarea id="inspTextContent" rows="2" class="insp-input insp-textarea" placeholder="Enter text..."></textarea>
+              </div>
+              <div class="insp-row">
+                <div class="insp-group">
+                  <label class="insp-label">Font</label>
+                  <select id="inspFontFamily" class="insp-input">
+                    <option value="Arial">Arial</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Comic Sans MS">Comic Sans MS</option>
+                    <option value="Tahoma">Tahoma</option>
+                    <option value="Trebuchet MS">Trebuchet MS</option>
+                  </select>
+                </div>
+                <div class="insp-group">
+                  <label class="insp-label">Size: <span id="inspFontSizeVal">64px</span></label>
+                  <input id="inspFontSize" type="range" min="16" max="220" value="64" class="slider" />
+                </div>
+              </div>
+              <div class="insp-row">
+                <div class="insp-group">
+                  <label class="insp-label">Style</label>
+                  <div class="insp-style-toggles">
+                    <label class="checkbox-inline"><input type="checkbox" id="inspTextBold" checked /> Bold</label>
+                    <label class="checkbox-inline"><input type="checkbox" id="inspTextItalic" /> Italic</label>
+                  </div>
+                </div>
+                <div class="insp-group">
+                  <label class="insp-label">Text Color</label>
+                  <input id="inspTextColor" type="color" value="#ffffff" class="insp-color" />
+                </div>
+              </div>
+              <div class="insp-row">
+                <div class="insp-group">
+                  <label class="insp-label">Outline Color</label>
+                  <input id="inspStrokeColor" type="color" value="#000000" class="insp-color" />
+                </div>
+                <div class="insp-group">
+                  <label class="insp-label">Outline: <span id="inspStrokeWidthVal">3px</span></label>
+                  <input id="inspStrokeWidth" type="range" min="0" max="16" value="3" class="slider" />
+                </div>
+              </div>
+              <div class="insp-row">
+                <div class="insp-group">
+                  <label class="insp-label">Box Color</label>
+                  <input id="inspBgColor" type="color" value="#000000" class="insp-color" />
+                </div>
+                <div class="insp-group">
+                  <label class="insp-label">Box Opacity: <span id="inspBgOpacityVal">0%</span></label>
+                  <input id="inspBgOpacity" type="range" min="0" max="100" value="0" class="slider" />
+                </div>
+              </div>
+            </div>
+
+            <div id="inspTransformSection">
+              <div class="insp-group" id="inspScaleGroup">
                 <div class="insp-label-row">
                   <label class="insp-label">Scale: <span id="inspScaleVal">100%</span></label>
                   <button id="btnResetTransform" class="btn btn-ghost btn-xs">Reset</button>
@@ -183,7 +251,10 @@
                 <input id="inspScale" type="range" min="10" max="500" value="100" class="slider" />
               </div>
               <div class="insp-group">
-                <label class="insp-label">Position X: <span id="inspXVal">0%</span></label>
+                <div class="insp-label-row">
+                  <label class="insp-label">Position X: <span id="inspXVal">0%</span></label>
+                  <button id="btnResetPosition" class="btn btn-ghost btn-xs hidden">Center</button>
+                </div>
                 <input id="inspX" type="range" min="-50" max="50" value="0" class="slider" />
               </div>
               <div class="insp-group">
@@ -196,9 +267,31 @@
               </div>
             </div>
 
-            <div class="insp-group">
+            <div class="insp-group" id="inspMediaPropsGroup">
               <label class="insp-label">Media Properties</label>
               <div class="media-props-box" id="inspMediaProps"></div>
+            </div>
+          </div>
+
+          <div class="inspector-form hidden" id="inspectorMulti">
+            <div class="insp-group">
+              <label class="insp-label">Selection</label>
+              <div class="insp-value" id="inspMultiCount">0 clips selected</div>
+            </div>
+            <div class="insp-group">
+              <div class="insp-label-row">
+                <label class="insp-label">Bulk Volume: <span id="inspMultiVolVal">100%</span></label>
+                <label class="checkbox-inline"><input type="checkbox" id="inspMultiMuted" /> Mute All</label>
+              </div>
+              <input id="inspMultiVolume" type="range" min="0" max="200" value="100" class="slider" />
+            </div>
+            <div class="insp-group">
+              <label class="insp-label">Bulk Opacity: <span id="inspMultiOpacityVal">100%</span></label>
+              <input id="inspMultiOpacity" type="range" min="0" max="100" value="100" class="slider" />
+            </div>
+            <div class="insp-row">
+              <button id="btnMultiDup" class="btn btn-ghost btn-sm">⧉ Duplicate All</button>
+              <button id="btnMultiDelete" class="btn btn-ghost btn-sm btn-danger-text">🗑 Delete All</button>
             </div>
           </div>
         </div>
@@ -213,6 +306,18 @@
           <label class="checkbox-inline" title="Snap clips to playhead and other clip edges">
             <input type="checkbox" id="snapToggle" checked /> Snap
           </label>
+          <span class="toolbar-sep"></span>
+          <button id="btnAddText" class="btn btn-accent btn-xs" title="Add a Text overlay at the playhead">+ Text</button>
+          <button id="btnAddVideoLayer" class="btn btn-ghost btn-xs" title="Add a new custom Video / Overlay layer">+ Video Layer</button>
+          <button id="btnAddAudioLayer" class="btn btn-ghost btn-xs" title="Add a new custom Audio layer">+ Audio Layer</button>
+          <div id="trackSelectionBar" class="track-sel-bar hidden">
+            <span id="trackSelCount" class="track-sel-count">0 tracks</span>
+            <button id="btnSelectTrackClips" class="btn btn-ghost btn-xs" title="Select all clips on selected tracks">Select Clips</button>
+            <button id="btnRenameSelectedTrack" class="btn btn-ghost btn-xs" title="Rename selected track">Rename</button>
+            <input id="trackSelColor" type="color" class="track-color-input" value="#8b5cf6" title="Recolor selected track(s)" />
+            <button id="btnMuteSelectedTracks" class="btn btn-ghost btn-xs" title="Toggle Mute/Visibility on selected tracks">Mute/Hide</button>
+            <button id="btnDeleteSelectedTracks" class="btn btn-ghost btn-xs btn-danger-text" title="Delete selected tracks">Delete</button>
+          </div>
         </div>
         <div class="timeline-toolbar-right">
           <span class="zoom-label">Zoom</span>
@@ -223,33 +328,15 @@
       </div>
 
       <div class="timeline-container" id="timelineContainer">
-        <div class="timeline-headers">
+        <div class="timeline-headers" id="timelineHeaders">
           <div class="ruler-corner">Time</div>
-          <div class="track-header" data-track="V2">
-            <span class="track-badge track-v2">V2</span>
-            <span>Overlay / Meme</span>
-          </div>
-          <div class="track-header" data-track="V1">
-            <span class="track-badge track-v1">V1</span>
-            <span>Main Video</span>
-          </div>
-          <div class="track-header" data-track="A1">
-            <span class="track-badge track-a1">A1</span>
-            <span>SFX / Sound</span>
-          </div>
-          <div class="track-header" data-track="A2">
-            <span class="track-badge track-a2">A2</span>
-            <span>Music / Audio</span>
-          </div>
         </div>
 
         <div class="timeline-scroll" id="timelineScroll">
           <div class="timeline-canvas" id="timelineCanvas">
             <div class="time-ruler" id="timeRuler"></div>
-            <div class="track-lane" data-track="V2" data-accept="visual"></div>
-            <div class="track-lane" data-track="V1" data-accept="visual"></div>
-            <div class="track-lane" data-track="A1" data-accept="audio"></div>
-            <div class="track-lane" data-track="A2" data-accept="audio"></div>
+            <div id="trackLanesContainer"></div>
+            <div class="marquee-box hidden" id="marqueeBox"></div>
             <div class="playhead" id="playhead">
               <div class="playhead-head"></div>
               <div class="playhead-line"></div>

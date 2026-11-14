@@ -2,6 +2,15 @@
 
 All notable changes to **LightAF Editor** are documented in this file.
 
+## [1.3.0] - 2026-11-14
+
+### Added
+- **Multiple Custom Layers**: Added **`+ Video Layer`** and **`+ Audio Layer`** buttons in the timeline toolbar to create unlimited custom visual (`V3`, `V4`, …) and audio (`A3`, `A4`, …) tracks with per-layer mute/hide toggles, inline renaming (double-click or **`✎`** button), custom layer colors, and layer deletion.
+- **Text Overlays & Direct Canvas Positioning**: Added **`+ Text`** to insert multi-line text clips at the playhead with font family, size (`16px–220px`), bold/italic, text color, outline color & width (`0px–16px`), background box color & opacity (`0%–100%`), fade in/out, opacity, and Position X/Y (`-50%` to `50%`) — plus direct click-and-drag positioning on the preview canvas and FFmpeg `drawtext` export.
+- **Multi-Track & Multi-Clip Selection**: Added **`Click`**, **`Ctrl+Click`**, and **`Shift+Click`** multi-selection on track headers (with **Select Clips**, **Rename**, **Recolor**, **Mute/Hide**, and **Delete** actions) as well as **`Ctrl+Click`** / marquee box selection across timeline clips with synchronized multi-clip dragging, bulk volume/mute/opacity inspector controls, duplicate, split, and delete.
+- **Library Multi-Select Delete**: Added selection checkboxes, **`Ctrl+Click`**, **`Shift+Click`**, **All**, **Clear**, and **🗑 Delete** actions in the Library panel to delete multiple media items at once.
+- **Documentation Rules (`rule.md`)**: Added standardized guidelines for maintaining `USER_GUIDE.md`, `README.md`, and `CHANGELOG.md`.
+
 ## [1.2.0] - 2026-11-14
 
 ### Added

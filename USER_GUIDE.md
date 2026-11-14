@@ -11,7 +11,7 @@ Welcome to **LightAF Editor**, a lightweight, portable Windows video & meme edit
 - **No extra software required** when using the portable release zip (`releases/LightAFEditor-v<version>-Portable.zip`)—both Node.js and FFmpeg are already bundled inside.
 
 ### Setup Steps (Portable Release)
-1. Download `LightAFEditor-v1.2.0-Portable.zip` from the [**GitHub Releases**](../../releases) page (or from `releases/`).
+1. Download `LightAFEditor-v1.3.0-Portable.zip` from the [**GitHub Releases**](../../releases) page (or from `releases/`).
 2. Right-click the `.zip` file → **Extract All...** and extract the `LightAFEditor` folder anywhere you like (Desktop, Documents, or a USB drive).
 3. Open the extracted folder and double-click **`LightAFEditor.exe`** to launch the editor.
 
@@ -36,6 +36,9 @@ The **Library** on the left panel is permanent—anything you add stays there ev
 - **Favorite (`★`)**: Click the star on any card to pin your go-to memes and sounds.
 - **Quick Preview (`▶`)**: Play any meme or sound effect right inside the Library without adding it to the timeline.
 - **Edit / Properties (`⋯`)**: Rename a clip, change its category (`Meme`, `SFX`, `Footage`, `Image`), view its **Media Properties** (format, resolution, duration, size, streams), or delete it from the Library.
+- **Multi-Select & Bulk Delete**:
+  1. Hover over any Library card and check its bottom-left checkbox, or use **`Ctrl + Click`** (toggle) / **`Shift + Click`** (range) to select multiple items.
+  2. Use the selection bar at the top of the Library to click **All**, **Clear**, or **🗑 Delete** to remove all selected items at once.
 
 ---
 
@@ -48,6 +51,21 @@ The **Library** on the left panel is permanent—anything you add stays there ev
   - **`A1` (SFX / Sound)**: Sound effects and meme audio.
   - **`A2` (Music / Audio)**: Background music or secondary audio.
 - Or click **`+ Add`** (or double-click a Library card) to insert it at the current red playhead position.
+
+### Custom Layers (Rename, Recolor, Mute/Hide & Delete)
+- Click **`+ Video Layer`** or **`+ Audio Layer`** in the timeline toolbar to add extra visual (`V3`, `V4`, …) or audio (`A3`, `A4`, …) layers.
+- **Rename a Layer**: Double-click the layer's name or click its **`✎`** button, type a new name, and press **`Enter`**.
+- **Recolor a Layer**: Click the color swatch on the track header to pick a custom color for the layer badge and accent.
+- **Mute / Hide or Delete**: Click the **`👁`** / **`🔊`** icon to hide a visual layer or mute an audio track, or click **`✕`** to delete a layer *(at least 1 visual and 1 audio layer must remain)*.
+
+### Adding & Positioning Text
+1. Move the playhead to where you want the text to appear and click **`+ Text`** in the timeline toolbar.
+2. In the **Clip Inspector** on the right, customize **Text Content** (supports multiple lines), **Font**, **Size (`16px–220px`)**, **Bold / Italic**, **Text Color**, **Outline Color & Width (`0px–16px`)**, and **Box Color & Opacity (`0%–100%`)**.
+3. **Position the Text**: Drag the text directly on the preview canvas, or fine-tune **Position X** and **Position Y** (`-50%` to `50%`) in the Inspector (click **Center** to reset).
+
+### Multi-Track & Multi-Clip Selection
+- **Select Multiple Tracks**: **`Click`**, **`Ctrl + Click`**, or **`Shift + Click`** on track headers to select multiple tracks, then use the toolbar bar to **Select Clips**, **Rename** (single track), **Recolor**, **Mute/Hide**, or **Delete**.
+- **Select Multiple Clips**: **`Ctrl + Click`** clips or drag a selection box across empty timeline space. Drag any selected clip to move all selected clips together, or use the Inspector to bulk-adjust **Volume**, **Mute**, **Opacity**, **Duplicate All**, or **Delete All**.
 
 ### Moving, Trimming & Splitting
 - **Move**: Drag a clip left or right along its track (or drag between `V1 ↔ V2` / `A1 ↔ A2`). Enable **Snap** to align cleanly with the playhead and other clip edges.

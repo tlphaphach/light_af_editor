@@ -1,7 +1,61 @@
 const { spawn, execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const ffmpegPath = require('ffmpeg-static');
+
+function resolveWindowsFont(fontFamily, bold, italic) {
+  const fontsDir = 'C:/Windows/Fonts';
+  const fam = (fontFamily || 'Arial').toLowerCase();
+  const candidates = [];
+
+  if (fam.includes('impact')) candidates.push('impact.ttf');
+  else if (fam.includes('verdana')) {
+    if (bold && italic) candidates.push('verdanaz.ttf');
+    else if (bold) candidates.push('verdanab.ttf');
+    else if (italic) candidates.push('verdanai.ttf');
+    candidates.push('verdana.ttf');
+  } else if (fam.includes('georgia')) {
+    if (bold && italic) candidates.push('georgiaz.ttf');
+    else if (bold) candidates.push('georgiab.ttf');
+    else if (italic) candidates.push('georgiai.ttf');
+    candidates.push('georgia.ttf');
+  } else if (fam.includes('times')) {
+    if (bold && italic) candidates.push('timesbi.ttf');
+    else if (bold) candidates.push('timesbd.ttf');
+    else if (italic) candidates.push('timesi.ttf');
+    candidates.push('times.ttf');
+  } else if (fam.includes('courier')) {
+    if (bold && italic) candidates.push('courbi.ttf');
+    else if (bold) candidates.push('courbd.ttf');
+    else if (italic) candidates.push('couri.ttf');
+    candidates.push('cour.ttf');
+  } else if (fam.includes('comic')) {
+    if (bold) candidates.push('comicbd.ttf');
+    candidates.push('comic.ttf');
+  } else if (fam.includes('tahoma')) {
+    if (bold) candidates.push('tahomabd.ttf');
+    candidates.push('tahoma.ttf');
+  } else if (fam.includes('trebuchet')) {
+    if (bold && italic) candidates.push('trebucbi.ttf');
+    else if (bold) candidates.push('trebucbd.ttf');
+    else if (italic) candidates.push('trebuci.ttf');
+    candidates.push('trebuc.ttf');
+  }
+
+  if (bold && italic) candidates.push('arialbi.ttf');
+  else if (bold) candidates.push('arialbd.ttf');
+  else if (italic) candidates.push('ariali.ttf');
+  candidates.push('arial.ttf');
+
+  for (const file of candidates) {
+    const full = path.join(fontsDir, file);
+    if (fs.existsSync(full)) {
+      return full.replace(/\\/g, '/').replace(/^([A-Za-z]):/, '$1\\:');
+    }
+  }
+  return null;
+}
 
 /**
  * Probe media file using `ffmpeg -i` (avoids needing a separate ffprobe binary).
@@ -117,16 +171,33 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       return reject(new Error('Timeline duration is too short.'));
     }
 
-    // Sort visual clips by track layer (V1 bottom, V2 top) then start time
-    const trackOrder = { V1: 1, V2: 2, V3: 3 };
+    // Track order & muted tracks from project.tracks
+    const tracks = Array.isArray(project.tracks) ? project.tracks : [];
+    const mutedTracks = new Set(tracks.filter((t) => t.muted).map((t) => t.id));
+    const trackOrder = {};
+    const visualTracks = tracks.filter((t) => t.type === 'visual');
+    visualTracks.forEach((t, idx) => {
+      trackOrder[t.id] = visualTracks.length - idx;
+    });
+
+    const getTrackZ = (trackId) => {
+      if (trackOrder[trackId] !== undefined) return trackOrder[trackId];
+      const n = parseInt(String(trackId || '').replace(/^\D+/, ''), 10);
+      return Number.isFinite(n) ? n : 1;
+    };
+
     const visualClips = clips
       .filter((c) => {
+        if (!c.track || mutedTracks.has(c.track)) return false;
+        if (c.clipType === 'text') return true;
         const item = libraryMap.get(c.libraryId);
-        return item && (item.mediaType === 'video' || item.mediaType === 'image') && c.track && c.track.startsWith('V');
+        return item && (item.mediaType === 'video' || item.mediaType === 'image') && c.track.startsWith('V');
       })
-      .sort((a, b) => (trackOrder[a.track] || 1) - (trackOrder[b.track] || 1) || a.start - b.start);
+      .sort((a, b) => getTrackZ(a.track) - getTrackZ(b.track) || a.start - b.start);
 
     const audioClips = clips.filter((c) => {
+      if (c.clipType === 'text') return false;
+      if (c.track && mutedTracks.has(c.track)) return false;
       const item = libraryMap.get(c.libraryId);
       if (!item) return false;
       if (c.muted || (c.volume !== undefined && c.volume <= 0)) return false;
@@ -144,6 +215,7 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
     const clipInputIdx = new Map();
 
     for (const c of clips) {
+      if (c.clipType === 'text') continue;
       const item = libraryMap.get(c.libraryId);
       if (!item) continue;
       const filePath = path.join(libraryDir, item.filename);
@@ -160,34 +232,87 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       }
     }
 
+    const tempTextFiles = [];
     const filterParts = [];
     let currentVideoLabel = '[0:v]';
     let vStep = 0;
 
     for (const c of visualClips) {
+      const start = Math.max(0, c.start || 0);
+      const dur = Math.max(0.05, c.duration || 1);
+      const end = start + dur;
+      const posX = c.x !== undefined ? c.x : 0; // offset from center in %
+      const posY = c.y !== undefined ? c.y : 0;
+      const opacity = Math.max(0, Math.min(1, (c.opacity !== undefined ? c.opacity : 100) / 100));
+      const fadeIn = Math.min(dur, Math.max(0, c.fadeIn || 0));
+      const fadeOut = Math.min(dur, Math.max(0, c.fadeOut || 0));
+
+      if (c.clipType === 'text') {
+        const textStr = c.text !== undefined ? String(c.text) : '';
+        if (!textStr.trim() || opacity <= 0) continue;
+
+        const txtPath = path.join(os.tmpdir(), `lightaf_txt_${Date.now()}_${vStep}.txt`);
+        fs.writeFileSync(txtPath, textStr, 'utf8');
+        tempTextFiles.push(txtPath);
+        const escapedTxtPath = txtPath.replace(/\\/g, '/').replace(/^([A-Za-z]):/, '$1\\:');
+
+        const fontFile = resolveWindowsFont(c.fontFamily, c.bold !== false, !!c.italic);
+        const fontSize = Math.max(10, c.fontSize || 64);
+        const fontColor = (c.color || '#ffffff').replace('#', '0x');
+        const strokeColor = (c.strokeColor || '#000000').replace('#', '0x');
+        const strokeW = c.strokeWidth !== undefined ? c.strokeWidth : 3;
+        const bgOpacity = Math.max(0, Math.min(1, (c.bgOpacity || 0) / 100));
+        const bgColor = (c.bgColor || '#000000').replace('#', '0x');
+
+        let alphaExpr = opacity.toFixed(3);
+        if (fadeIn > 0 && fadeOut > 0) {
+          alphaExpr = `${opacity.toFixed(3)}*min(min((t-${start.toFixed(3)})/${fadeIn.toFixed(3)},(${end.toFixed(3)}-t)/${fadeOut.toFixed(3)}),1)`;
+        } else if (fadeIn > 0) {
+          alphaExpr = `${opacity.toFixed(3)}*min((t-${start.toFixed(3)})/${fadeIn.toFixed(3)},1)`;
+        } else if (fadeOut > 0) {
+          alphaExpr = `${opacity.toFixed(3)}*min((${end.toFixed(3)}-t)/${fadeOut.toFixed(3)},1)`;
+        }
+
+        const dtParts = [];
+        if (fontFile) dtParts.push(`fontfile='${fontFile}'`);
+        dtParts.push(`textfile='${escapedTxtPath}'`);
+        dtParts.push(`fontsize=${fontSize}`);
+        dtParts.push(`fontcolor=${fontColor}`);
+        if (strokeW > 0) {
+          dtParts.push(`borderw=${strokeW}`);
+          dtParts.push(`bordercolor=${strokeColor}`);
+        }
+        if (bgOpacity > 0) {
+          dtParts.push('box=1');
+          dtParts.push(`boxcolor=${bgColor}@${bgOpacity.toFixed(2)}`);
+          dtParts.push('boxborderw=12');
+        }
+        dtParts.push(`x=(w-text_w)/2+(w*${(posX / 100).toFixed(4)})`);
+        dtParts.push(`y=(h-text_h)/2+(h*${(posY / 100).toFixed(4)})`);
+        dtParts.push(`alpha='${alphaExpr}'`);
+        dtParts.push(`enable='between(t,${start.toFixed(3)},${end.toFixed(3)})'`);
+
+        const nextLabel = `[v_out_${vStep}]`;
+        filterParts.push(`${currentVideoLabel}drawtext=${dtParts.join(':')}${nextLabel}`);
+        currentVideoLabel = nextLabel;
+        vStep++;
+        continue;
+      }
+
       const idx = clipInputIdx.get(c.id);
       if (idx === undefined) continue;
       const item = libraryMap.get(c.libraryId);
-      const start = Math.max(0, c.start || 0);
-      const dur = Math.max(0.05, c.duration || 1);
       const speed = Math.max(0.1, Math.min(100, c.speed || 1));
       const srcDur = dur * speed;
       const inPt = Math.max(0, c.inPoint || 0);
-      const end = start + dur;
 
       // Overlay transform (defaults to full fit)
       const scalePct = c.scale !== undefined ? c.scale : 100;
       const targetW = Math.max(2, Math.round((width * scalePct) / 100 / 2) * 2);
       const targetH = Math.max(2, Math.round((height * scalePct) / 100 / 2) * 2);
-      const posX = c.x !== undefined ? c.x : 0; // offset from center in %
-      const posY = c.y !== undefined ? c.y : 0;
 
       const rawLabel = `[v_raw_${vStep}]`;
       const nextLabel = `[v_out_${vStep}]`;
-
-      const opacity = Math.max(0, Math.min(1, (c.opacity !== undefined ? c.opacity : 100) / 100));
-      const fadeIn = Math.min(dur, Math.max(0, c.fadeIn || 0));
-      const fadeOut = Math.min(dur, Math.max(0, c.fadeOut || 0));
 
       const vFilters = [];
       if (item.mediaType === 'image') {
@@ -320,7 +445,16 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       if (stderrLog.length > 8000) stderrLog = stderrLog.slice(-8000);
     });
 
+    const cleanupTempText = () => {
+      for (const f of tempTextFiles) {
+        try {
+          if (fs.existsSync(f)) fs.unlinkSync(f);
+        } catch {}
+      }
+    };
+
     proc.on('close', (code) => {
+      cleanupTempText();
       if (code === 0 && fs.existsSync(outputPath)) {
         if (onProgress) onProgress(100, 'Export complete!');
         resolve(outputPath);
@@ -329,7 +463,10 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       }
     });
 
-    proc.on('error', (err) => reject(err));
+    proc.on('error', (err) => {
+      cleanupTempText();
+      reject(err);
+    });
   });
 }
 
