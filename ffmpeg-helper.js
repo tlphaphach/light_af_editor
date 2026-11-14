@@ -69,6 +69,26 @@ function generateThumbnail(filePath, outThumbPath, mediaType) {
 }
 
 /**
+ * Chain FFmpeg atempo filters (each in [0.5, 2.0]) for any speed in [0.1, 100].
+ */
+function buildAtempoFilters(speed) {
+  const filters = [];
+  let rem = speed;
+  while (rem > 2.0) {
+    filters.push('atempo=2.0');
+    rem /= 2.0;
+  }
+  while (rem < 0.5) {
+    filters.push('atempo=0.5');
+    rem /= 0.5;
+  }
+  if (Math.abs(rem - 1.0) > 0.0001) {
+    filters.push(`atempo=${rem.toFixed(4)}`);
+  }
+  return filters;
+}
+
+/**
  * Render the timeline project to an MP4 file using FFmpeg.
  * @param {Object} project - { width, height, fps, clips: [...] }
  * @param {Map<string, Object>} libraryMap - id -> library item
@@ -150,6 +170,8 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       const item = libraryMap.get(c.libraryId);
       const start = Math.max(0, c.start || 0);
       const dur = Math.max(0.05, c.duration || 1);
+      const speed = Math.max(0.1, Math.min(100, c.speed || 1));
+      const srcDur = dur * speed;
       const inPt = Math.max(0, c.inPoint || 0);
       const end = start + dur;
 
@@ -172,8 +194,8 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
         vFilters.push(`scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease`, 'format=rgba');
       } else {
         vFilters.push(
-          `trim=start=${inPt.toFixed(3)}:duration=${dur.toFixed(3)}`,
-          'setpts=PTS-STARTPTS',
+          `trim=start=${inPt.toFixed(3)}:duration=${srcDur.toFixed(3)}`,
+          speed !== 1 ? `setpts=(PTS-STARTPTS)/${speed.toFixed(4)}` : 'setpts=PTS-STARTPTS',
           `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease`,
           'format=rgba'
         );
@@ -215,6 +237,8 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       if (idx === undefined) continue;
       const start = Math.max(0, c.start || 0);
       const dur = Math.max(0.05, c.duration || 1);
+      const speed = Math.max(0.1, Math.min(100, c.speed || 1));
+      const srcDur = dur * speed;
       const inPt = Math.max(0, c.inPoint || 0);
       const vol = c.volume !== undefined ? c.volume / 100 : 1;
       const delayMs = Math.round(start * 1000);
@@ -222,8 +246,9 @@ function exportTimeline(project, libraryMap, libraryDir, outputPath, onProgress)
       const fadeOut = Math.min(dur, Math.max(0, c.fadeOut || 0));
 
       const aFilters = [
-        `atrim=start=${inPt.toFixed(3)}:duration=${dur.toFixed(3)}`,
+        `atrim=start=${inPt.toFixed(3)}:duration=${srcDur.toFixed(3)}`,
         'asetpts=PTS-STARTPTS',
+        ...buildAtempoFilters(speed),
         `volume=${vol.toFixed(3)}`,
       ];
       if (fadeIn > 0) {

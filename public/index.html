@@ -103,6 +103,8 @@
             <span class="timecode" id="timecodeDisplay">00:00.0 / 00:00.0</span>
           </div>
           <div class="transport-right">
+            <button id="btnUndo" class="btn btn-ghost btn-sm" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
+            <button id="btnRedo" class="btn btn-ghost btn-sm" title="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled>↷ Redo</button>
             <button id="btnSplit" class="btn btn-ghost btn-sm" title="Split selected clip at playhead (S)">✂ Split</button>
             <button id="btnDuplicate" class="btn btn-ghost btn-sm" title="Duplicate selected clip (Ctrl+D)">⧉ Dup</button>
             <button id="btnDeleteClip" class="btn btn-ghost btn-sm btn-danger-text" title="Delete selected clip (Del)">🗑 Delete</button>
@@ -123,6 +125,8 @@
               <div class="shortcut-row"><kbd>S</kbd><span>Split at Playhead</span></div>
               <div class="shortcut-row"><kbd>Del</kbd><span>Delete Clip</span></div>
               <div class="shortcut-row"><kbd>Ctrl+D</kbd><span>Duplicate Clip</span></div>
+              <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>Undo</span></div>
+              <div class="shortcut-row"><kbd>Ctrl+Y</kbd><span>Redo</span></div>
               <div class="shortcut-row"><kbd>← / →</kbd><span>Nudge Playhead</span></div>
             </div>
           </div>
@@ -154,6 +158,14 @@
               </div>
             </div>
 
+            <div class="insp-group" id="inspSpeedSection">
+              <div class="insp-label-row">
+                <label class="insp-label">Speed: <span id="inspSpeedVal">1.0x</span></label>
+                <button id="btnResetSpeed" class="btn btn-ghost btn-xs">1x</button>
+              </div>
+              <input id="inspSpeed" type="range" min="-1" max="2" step="0.005" value="0" class="slider" />
+            </div>
+
             <div class="insp-group" id="inspAudioSection">
               <div class="insp-label-row">
                 <label class="insp-label">Volume: <span id="inspVolumeVal">100%</span></label>
@@ -168,7 +180,7 @@
                   <label class="insp-label">Scale: <span id="inspScaleVal">100%</span></label>
                   <button id="btnResetTransform" class="btn btn-ghost btn-xs">Reset</button>
                 </div>
-                <input id="inspScale" type="range" min="10" max="200" value="100" class="slider" />
+                <input id="inspScale" type="range" min="10" max="500" value="100" class="slider" />
               </div>
               <div class="insp-group">
                 <label class="insp-label">Position X: <span id="inspXVal">0%</span></label>
