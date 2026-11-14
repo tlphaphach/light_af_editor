@@ -12,13 +12,14 @@ A lightweight, portable Windows video & meme editor with a **persistent Meme & S
 - **Persistent Meme & Sound Library**:
   - Drag and drop or select videos, meme clips, sound effects, and images.
   - Files are copied into `data/library/` with auto-generated thumbnails (`data/thumbs/`) and metadata (`data/library.json`), so they stay available across sessions and new projects.
-  - Filter by **All**, **★ Fav**, **Memes**, **SFX**, **Footage**, **Images**, search by name, quick-preview in place, and drag-and-drop onto the timeline.
-- **Multi-Track Timeline**:
-  - 4 tracks: `V2` (Overlay / Meme), `V1` (Main Video), `A1` (SFX / Sound), `A2` (Music / Audio).
-  - Drag to move, drag edges to trim, **Undo (`Ctrl+Z`)**, **Redo (`Ctrl+Y` / `Ctrl+Shift+Z`)**, **Split (`S`)**, **Duplicate (`Ctrl+D`)**, **Delete (`Del`)**, edge snapping, `Ctrl + Scroll` timeline zoom, and automatic playhead scrolling.
-- **Clip Inspector & Media Properties**:
+  - Filter by **All**, **★ Fav**, **Memes**, **SFX**, **Footage**, **Images**, search by name, quick-preview in place, multi-select to bulk delete, and drag-and-drop onto the timeline.
+- **Multi-Track Timeline & Custom Layers**:
+  - Starts with `V2` (Overlay / Meme), `V1` (Main Video), `A1` (SFX / Sound), `A2` (Music / Audio), plus **`+ Video Layer`** and **`+ Audio Layer`** to add unlimited custom layers with custom names, colors, and mute/hide toggles.
+  - Drag to move, drag edges to trim, **Multi-Track & Multi-Clip Selection** (`Ctrl+Click`, `Shift+Click`, marquee box), **Undo (`Ctrl+Z`)**, **Redo (`Ctrl+Y` / `Ctrl+Shift+Z`)**, **Split (`S`)**, **Duplicate (`Ctrl+D`)**, **Delete (`Del`)**, edge snapping, `Ctrl + Scroll` timeline zoom, and automatic playhead scrolling.
+- **Text Overlays & Clip Inspector**:
+  - Add **`+ Text`** overlays with multi-line text, font family, size (`16px–220px`), bold/italic, text color, outline, background box, and **direct drag-to-position** on the preview canvas (exported via FFmpeg `drawtext`).
   - Adjust **Speed (`0.1x–100x`)** with `1x` reset, **Fade In / Fade Out** durations (visual alpha & audio gain), **Volume (`0%–200%`)**, **Mute**, **Opacity (`0%–100%`)**, and overlay **Scale (`10%–500%`) / Position X / Position Y** for memes and images.
-  - Inspect media properties (format, resolution, duration, file size, and audio/video streams).
+  - Inspect media properties (format, resolution, duration, file size, and audio/video streams), or bulk-edit volume/mute/opacity when multiple clips are selected.
 - **High-Resolution Export**:
   - Export MP4 (H.264 + AAC) in **720p**, **1080p**, **2K (1440p)**, **4K (2160p)**, **9:16 Vertical (1080p/2K/4K)**, and **1:1 Square**.
 - **Dark & Light Themes**:
@@ -47,6 +48,7 @@ light_af_editor/
 ├── package.json
 ├── CHANGELOG.md            # Version history & release notes
 ├── USER_GUIDE.md           # Step-by-step user guide
+├── rule.md                 # Documentation consistency rules
 ├── public/
 │   ├── index.html          # Main editor UI
 │   ├── styles.css          # Dark & Light theme styles
@@ -66,7 +68,7 @@ light_af_editor/
 ## Quick Start
 
 ### 1. For End Users (Portable Zip — No Installation Needed)
-1. Download `LightAFEditor-v1.2.0-Portable.zip` from the [**Releases**](../../releases) page.
+1. Download `LightAFEditor-v1.3.0-Portable.zip` from the [**Releases**](../../releases) page.
 2. Right-click the `.zip` → **Extract All...** anywhere (Desktop, Documents, or a USB drive).
 3. Double-click **`LightAFEditor.exe`** (Node.js and FFmpeg are already bundled inside).
 
